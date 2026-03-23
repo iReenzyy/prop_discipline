@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FP Discipline Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: { 850: '#1f1f22', 900: '#18181b', 950: '#09090b' },
+                        fp: { green: '#10b981', red: '#ef4444', blue: '#3b82f6', warn: '#f59e0b', darkred: '#7f1d1d', gold: '#eab308' }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'San Francisco', 'Helvetica Neue', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #09090b; color: #e4e4e7; -webkit-tap-highlight-color: transparent; }
+        .glass-panel { background: rgba(24, 24, 27, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(63, 63, 70, 0.3); }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        
+        input[type="checkbox"] {
+            appearance: none; background-color: #27272a; margin: 0; font: inherit; color: currentColor; width: 1.5em; height: 1.5em;
+            border: 1px solid #3f3f46; border-radius: 0.35em; display: grid; place-content: center; transition: 0.2s all; cursor: pointer;
+        }
+        input[type="checkbox"]::before {
+            content: ""; width: 0.8em; height: 0.8em; transform: scale(0); transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #10b981; transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        input[type="checkbox"]:checked { background-color: rgba(16, 185, 129, 0.1); border-color: #10b981; }
+        input[type="checkbox"]:checked::before { transform: scale(1); }
+
+        .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+        .glow-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+        .glow-warn { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+        .glow-gold { box-shadow: 0 0 20px rgba(234, 179, 8, 0.3); border-color: #eab308 !important; }
+
+        .zone-bar-container { width: 100%; height: 28px; background: #27272a; border-radius: 14px; position: relative; overflow: hidden; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+        .zone-loss { background: linear-gradient(90deg, rgba(239,68,68,0.3) 0%, rgba(239,68,68,0.1) 100%); height: 100%; width: 50%; border-right: 2px solid #52525b; position: relative;}
+        .zone-profit { background: linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.3) 100%); height: 100%; width: 50%; position: relative;}
+        .zone-loss::before { content:''; position: absolute; left: 20%; width: 1px; height: 100%; background: #ef4444; opacity: 0.8;} 
+        .zone-loss::after { content:''; position: absolute; left: 40%; width: 1px; height: 100%; background: #f59e0b; opacity: 0.5;} 
+        
+        .indicator-pin { position: absolute; top: 0; width: 4px; height: 100%; background: #fff; box-shadow: 0 0 10px #fff; transform: translateX(-50%); transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 10; }
+        .phase-progress-bg { width: 100%; height: 8px; background: #27272a; border-radius: 4px; overflow: hidden; position: relative;}
+        .phase-progress-fill { height: 100%; background: #3b82f6; transition: width 0.5s ease; }
+        .phase-loss-fill { height: 100%; background: #ef4444; transition: width 0.5s ease; position: absolute; top:0; left:0;}
+
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        textarea { resize: none; }
+    </style>
+</head>
+<body class="min-h-screen pb-12 antialiased selection:bg-fp-blue selection:text-white">
+
+    <header class="glass-panel sticky top-0 z-50 border-b border-zinc-800 px-4 py-3 flex justify-between items-center">
+        <div>
+            <h1 class="text-sm font-bold tracking-widest text-zinc-100 uppercase">Funding Pips <span class="text-fp-blue">PRO</span></h1>
+            <div id="live-date" class="text-xs text-zinc-500 font-mono mt-0.5">--/--/----</div>
+        </div>
+        <div class="text-right">
+            <div id="live-time" class="text-xl font-mono font-black tracking-tight text-white">00:00:00</div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto sm:max-w-2xl lg:max-w-5xl px-4 mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <div class="lg:col-span-2">
+            <div id="status-banner" class="rounded-2xl p-6 text-center transition-all duration-300 border border-zinc-800 bg-zinc-900 flex flex-col items-center justify-center">
+                <div id="status-icon" class="text-4xl mb-2">⏳</div>
+                <h2 id="status-title" class="text-2xl font-black uppercase tracking-wider text-zinc-100 mb-1">Инициализация</h2>
+                <p id="status-msg" class="text-sm font-medium text-zinc-400 mb-4">Синхронизация систем...</p>
+                <button id="btn-next-phase" class="hidden bg-fp-green hover:bg-emerald-600 text-zinc-900 px-6 py-2 rounded-lg font-bold uppercase tracking-wider transition-colors shadow-lg">Перейти к следующей фазе</button>
+                <button id="btn-restart-challenge" class="hidden bg-fp-red hover:bg-red-600 text-white px-6 py-2 rounded-lg font-bold uppercase tracking-wider transition-colors shadow-lg mt-2">Начать челлендж заново</button>
+            </div>
+        </div>
+
+        <!-- ЛЕВАЯ КОЛОНКА -->
+        <div class="space-y-6">
+            <section class="glass-panel rounded-2xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-zinc-800 flex justify-between items-center">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Чек-лист исполнения</h3>
+                    <button id="btn-notify" class="text-[10px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-400 transition-colors uppercase font-bold">Пуши: OFF</button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <label class="flex items-start gap-4 cursor-pointer group">
+                        <input type="checkbox" id="chk-psych" class="mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Психология в норме: нет тильта, фомо или желания отыграться.</span>
+                    </label>
+                    <label class="flex items-start gap-4 cursor-pointer group">
+                        <input type="checkbox" id="chk-setup" class="mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Сетап категории A+. Строго по торговому плану.</span>
+                    </label>
+                    <label class="flex items-start gap-4 cursor-pointer group">
+                        <input type="checkbox" id="chk-risk" class="mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Риск 0.5% (макс $50). Размер позиции жестко рассчитан.</span>
+                    </label>
+                    <label class="flex items-start gap-4 cursor-pointer group">
+                        <input type="checkbox" id="chk-stop" class="mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Hard Stop-Loss выставлен до входа в сделку.</span>
+                    </label>
+                </div>
+                <div class="px-5 py-3 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center">
+                    <span id="chk-status" class="text-xs font-bold uppercase text-fp-red">Не готов</span>
+                    <button id="btn-reset" class="text-xs text-zinc-500 hover:text-white transition-colors uppercase font-bold tracking-wider">Сбросить</button>
+                </div>
+            </section>
+
+            <!-- БЛОК МАНУАЛЬНЫХ НОВОСТЕЙ (SMART PASTE) -->
+            <section class="glass-panel rounded-2xl overflow-hidden relative">
+                <div class="px-5 py-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                    <div>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">План на день: Макро</h3>
+                        <span class="text-[10px] text-zinc-500 font-mono">Правило ±15 Мин (Красные папки)</span>
+                    </div>
+                    <div id="news-setup-status" class="text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Не задано</div>
+                </div>
+
+                <!-- Smart Paste Форма -->
+                <div id="news-setup-form" class="p-5 border-b border-zinc-800 bg-zinc-900">
+                    <p class="text-xs text-zinc-400 mb-3">Скопируй строку с ForexFactory и вставь сюда. Система сама найдет время и валюту.</p>
+                    <div class="flex gap-2 mb-3">
+                        <textarea id="smart-paste-input" rows="2" placeholder="Например: 10:30am EUR German Flash Manufacturing PMI" class="bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 focus:border-fp-blue outline-none flex-grow placeholder-zinc-600"></textarea>
+                        <button id="btn-add-news" class="bg-zinc-700 hover:bg-zinc-600 text-white font-bold px-4 rounded-lg transition-colors flex items-center justify-center shrink-0">Добавить</button>
+                    </div>
+                    <div id="parse-error" class="hidden text-[10px] text-fp-red mb-3 font-bold uppercase tracking-wider">Не удалось распознать время (HH:MM) или валюту (XXX). Проверь текст.</div>
+                    
+                    <div class="flex gap-2 mt-2">
+                        <button id="btn-save-news-plan" class="flex-1 bg-fp-blue hover:bg-blue-600 text-white text-xs font-bold uppercase tracking-wider py-2 rounded-lg transition-colors">Утвердить план</button>
+                        <button id="btn-no-news" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold uppercase tracking-wider py-2 rounded-lg transition-colors border border-zinc-700">Сегодня пусто</button>
+                    </div>
+                </div>
+
+                <div class="p-0">
+                    <ul id="news-list" class="divide-y divide-zinc-800/50">
+                        <!-- Сюда падают добавленные новости -->
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА -->
+        <div class="space-y-6">
+            <section class="glass-panel rounded-2xl overflow-hidden p-5 border-t-2 border-t-fp-blue">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <div id="phase-badge" class="inline-block text-[10px] font-bold uppercase tracking-widest bg-fp-blue/20 text-fp-blue px-2 py-0.5 rounded border border-fp-blue/30 mb-1">Фаза 1: Студент</div>
+                        <div class="text-2xl font-mono font-black text-white" id="account-balance-text">$10,000</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Цель / Лимит</div>
+                        <div class="text-xs font-mono font-bold text-zinc-300">
+                            <span class="text-fp-green" id="phase-target-text">$10,800</span> / 
+                            <span class="text-fp-red" id="phase-loss-text">$9,000</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="phase-progress-bg">
+                    <div id="phase-progress-fill" class="phase-progress-fill" style="width: 0%"></div>
+                    <div id="phase-loss-fill" class="phase-loss-fill" style="width: 0%"></div>
+                </div>
+            </section>
+
+            <section class="glass-panel rounded-2xl overflow-hidden p-5">
+                <div class="flex justify-between items-center mb-5">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Транзакции и Риск (Сегодня)</h3>
+                    <div class="text-xs font-mono text-zinc-500">Max Loss: -$500</div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="text-[10px] text-zinc-500 uppercase font-bold mb-2 block">Результат последней сделки (+/- $)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="trade-input" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white font-mono font-bold text-lg focus:outline-none focus:border-fp-blue transition-colors text-center shadow-inner placeholder-zinc-700" placeholder="-50 или 120">
+                        <button id="btn-add-trade" class="bg-fp-blue hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-sm font-bold transition-all shadow-lg active:scale-95 uppercase tracking-wider">Добавить</button>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="flex justify-between text-[10px] font-bold mb-2 uppercase tracking-wider text-zinc-500">
+                        <span class="text-fp-red">-$500</span>
+                        <span>-$300</span>
+                        <span class="text-zinc-300">0</span>
+                        <span class="text-fp-green">+$500+</span>
+                    </div>
+                    <div class="zone-bar-container">
+                        <div class="zone-loss"></div>
+                        <div class="zone-profit"></div>
+                        <div class="indicator-pin" id="pnl-pin" style="left: 50%;"></div>
+                    </div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <button id="btn-reset-day" class="text-[10px] uppercase font-bold text-zinc-600 hover:text-zinc-300 transition-colors tracking-widest">Сбросить день</button>
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-zinc-500 mr-1">Daily Net:</span>
+                            <span id="daily-pnl-text" class="font-mono text-base font-bold text-zinc-300">$0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 flex flex-col items-center justify-center relative">
+                        <div class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1 text-center">Дневной буфер</div>
+                        <div id="daily-rem-text" class="text-lg font-mono font-bold text-fp-green">$500</div>
+                    </div>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 flex flex-col items-center justify-center relative">
+                        <div class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1 text-center">Сделок</div>
+                        <div id="trade-count-text" class="text-lg font-mono font-bold text-zinc-200">0</div>
+                        <div id="overtrade-warn" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-fp-red animate-pulse hidden"></div>
+                    </div>
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-3 flex flex-col items-center justify-center">
+                        <div class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2 text-center">Серия лоссов</div>
+                        <div class="flex gap-1.5" id="streak-dots">
+                            <div class="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-600"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-600"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-600"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-panel rounded-2xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-zinc-800">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Режим киборга</h3>
+                </div>
+                <div class="p-5">
+                    <div id="schedule-list" class="space-y-4 relative before:absolute before:inset-y-0 before:left-[27px] before:w-[2px] before:bg-zinc-800">
+                        <!-- JS Inject -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const setupPWA = () => {
+            const canvas = document.createElement('canvas'); canvas.width = canvas.height = 192;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#09090b'; ctx.fillRect(0,0,192,192);
+            ctx.fillStyle = '#10b981'; ctx.font = '80px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FP', 96, 96);
+            const iconData = canvas.toDataURL('image/png');
+            document.head.insertAdjacentHTML('beforeend', `<link rel="apple-touch-icon" href="${iconData}">`);
+            const manifest = { name: "Funding Pips Pro", short_name: "FP Pro", display: "standalone", background_color: "#09090b", theme_color: "#09090b", icons: [{ src: iconData, sizes: "192x192", type: "image/png" }] };
+            document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="data:application/manifest+json;charset=utf-8,${encodeURIComponent(JSON.stringify(manifest))}">`);
+        };
+        setupPWA();
+
+        let notificationsEnabled = false;
+        let notifiedEvents = new Set();
+        let newsEvents = []; 
+        let isNewsPlanSet = false;
+
+        const btnNotify = document.getElementById('btn-notify');
+        btnNotify.addEventListener('click', async () => {
+            if (!("Notification" in window)) { alert("Браузер не поддерживает пуши."); return; }
+            const perm = await Notification.requestPermission();
+            if (perm === "granted") {
+                notificationsEnabled = true; btnNotify.textContent = "Пуши: ON"; btnNotify.classList.add('text-fp-green');
+                firePush("Терминал подключен", "Уведомления активированы.");
+            }
+        });
+
+        const firePush = (title, body) => {
+            if (notificationsEnabled && Notification.permission === "granted") {
+                new Notification(title, { body, icon: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='40' fill='%23ef4444'/></svg>" });
+            }
+        };
+
+        // --- CORE STATE ---
+        const STARTING_BALANCE = 10000;
+        const PHASES = {
+            1: { target: 10800, maxLoss: 9000, dailyLimit: -500, title: "Фаза 1: Студент" },
+            2: { target: 10500, maxLoss: 9000, dailyLimit: -500, title: "Фаза 2: Практик" },
+            3: { target: Infinity, maxLoss: 9000, dailyLimit: -500, title: "Фондирован (Master)" }
+        };
+
+        let appState = { phase: 1, balance: STARTING_BALANCE, date: new Date().toDateString(), dailyPnl: 0, streak: 0, tradesCount: 0, status: "ACTIVE" };
+
+        const loadState = () => {
+            const saved = JSON.parse(localStorage.getItem('fp_master_state'));
+            const dateStr = new Date().toDateString();
+            
+            if (saved) {
+                appState = { ...appState, ...saved };
+                if (appState.date !== dateStr) {
+                    appState.date = dateStr;
+                    appState.dailyPnl = 0; appState.streak = 0; appState.tradesCount = 0;
+                    notifiedEvents.clear();
+                    localStorage.removeItem('fp_news_plan');
+                    isNewsPlanSet = false;
+                }
+            }
+
+            const savedNews = JSON.parse(localStorage.getItem('fp_news_plan'));
+            if (savedNews && savedNews.date === dateStr) {
+                newsEvents = savedNews.events;
+                isNewsPlanSet = true;
+                document.getElementById('news-setup-form').classList.add('hidden');
+                document.getElementById('news-setup-status').textContent = "УТВЕРЖДЕНО";
+                document.getElementById('news-setup-status').className = "text-[10px] text-fp-green border border-fp-green/30 bg-fp-green/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
+            } else {
+                isNewsPlanSet = false;
+                newsEvents = [];
+                document.getElementById('news-setup-form').classList.remove('hidden');
+            }
+
+            renderUI();
+        };
+
+        const saveState = () => { localStorage.setItem('fp_master_state', JSON.stringify(appState)); renderUI(); updateDashboard(); };
+
+        // --- SMART PASTE NEWS LOGIC ---
+        let tempNewsList = [];
+
+        // Parsing function
+        const parseNewsLine = (rawText) => {
+            // Regex for time (matches "10:30", "10:30am", "2:30 PM")
+            const timeMatch = rawText.match(/\b(\d{1,2}:\d{2}(?:\s?[aApP][mM])?)\b/);
+            // Regex for currency (matches exactly 3 uppercase letters bounded by spaces or start/end)
+            const currencyMatch = rawText.match(/\b([A-Z]{3})\b/);
+
+            if (!timeMatch || !currencyMatch) return null;
+
+            let timeRaw = timeMatch[1].trim();
+            const currency = currencyMatch[1];
+            
+            // Clean title by removing the time, currency, and leading/trailing junk
+            let title = rawText.replace(timeRaw, '').replace(currency, '')
+                               .replace(/^[,\s-]+|[,\s-]+$/g, '') // Trim commas, spaces, dashes at start/end
+                               .replace(/\s{2,}/g, ' ')           // Remove double spaces
+                               .trim();
+            
+            if (!title) title = "Макро-событие";
+
+            // Convert AM/PM to 24h format if needed
+            let parsedTime = timeRaw;
+            if (timeRaw.toLowerCase().includes('m')) {
+                const isPM = timeRaw.toLowerCase().includes('p');
+                const parts = timeRaw.toLowerCase().replace(/[a-z\s]/g, '').split(':');
+                let h = parseInt(parts[0]);
+                const m = parts[1];
+                
+                if (isPM && h !== 12) h += 12;
+                if (!isPM && h === 12) h = 0;
+                
+                parsedTime = `${h.toString().padStart(2, '0')}:${m}`;
+            }
+
+            return { timeStr: parsedTime, currency: currency, title: title };
+        };
+
+        document.getElementById('btn-add-news').addEventListener('click', () => {
+            const inputEl = document.getElementById('smart-paste-input');
+            const errorEl = document.getElementById('parse-error');
+            const rawText = inputEl.value.trim();
+            
+            if (!rawText) return;
+
+            const parsed = parseNewsLine(rawText);
+            
+            if (parsed) {
+                errorEl.classList.add('hidden');
+                inputEl.classList.remove('border-fp-red');
+                tempNewsList.push(parsed);
+                renderTempNews();
+                inputEl.value = '';
+            } else {
+                errorEl.classList.remove('hidden');
+                inputEl.classList.add('border-fp-red');
+            }
+        });
+
+        const renderTempNews = () => {
+            const list = document.getElementById('news-list');
+            list.innerHTML = '';
+            tempNewsList.sort((a,b) => a.timeStr.localeCompare(b.timeStr));
+            tempNewsList.forEach((n, idx) => {
+                list.insertAdjacentHTML('beforeend', `<li class="px-5 py-3 flex items-center gap-4 border-b border-zinc-800/50 bg-zinc-800/20"><div class="w-2 h-2 rounded-full bg-fp-red shadow-[0_0_8px_#ef4444]"></div><div class="font-mono text-sm font-bold text-zinc-300 w-12">${n.timeStr}</div><div class="text-xs font-bold text-fp-red bg-fp-red/10 px-1.5 py-0.5 rounded border border-fp-red/20">${n.currency}</div><div class="text-sm font-medium text-zinc-400 truncate">${n.title}</div><button onclick="removeTempNews(${idx})" class="ml-auto text-zinc-500 hover:text-fp-red text-xs font-bold transition-colors">✕</button></li>`);
+            });
+        };
+
+        window.removeTempNews = (idx) => { tempNewsList.splice(idx, 1); renderTempNews(); };
+
+        document.getElementById('btn-save-news-plan').addEventListener('click', () => {
+            if (tempNewsList.length === 0) { alert("Сначала вставь текст и нажми 'Добавить', либо выбери 'Сегодня пусто'."); return; }
+            saveNewsPlan(tempNewsList);
+        });
+
+        document.getElementById('btn-no-news').addEventListener('click', () => { saveNewsPlan([]); });
+
+        const saveNewsPlan = (eventsArray) => {
+            const now = new Date();
+            newsEvents = eventsArray.map(n => {
+                const [h, m] = n.timeStr.split(':').map(Number);
+                const d = new Date(); d.setHours(h, m, 0, 0);
+                return { ...n, timestamp: d.getTime() };
+            });
+
+            localStorage.setItem('fp_news_plan', JSON.stringify({ date: now.toDateString(), events: newsEvents }));
+            isNewsPlanSet = true;
+            document.getElementById('news-setup-form').classList.add('hidden');
+            document.getElementById('news-setup-status').textContent = "УТВЕРЖДЕНО";
+            document.getElementById('news-setup-status').className = "text-[10px] text-fp-green border border-fp-green/30 bg-fp-green/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
+            updateDashboard();
+        };
+
+        // --- TRANSACTIONS ---
+        document.getElementById('btn-add-trade').addEventListener('click', () => {
+            if (appState.status !== "ACTIVE" || !isNewsPlanSet) return; 
+            const inputEl = document.getElementById('trade-input');
+            const tradeResult = parseFloat(inputEl.value);
+            if (!isNaN(tradeResult) && inputEl.value.trim() !== "") {
+                appState.dailyPnl += tradeResult; appState.balance += tradeResult; appState.tradesCount++;
+                if (tradeResult < 0) appState.streak++; else appState.streak = 0; 
+                inputEl.value = ''; checkAccountRules(); saveState();
+            }
+        });
+
+        document.getElementById('trade-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('btn-add-trade').click(); });
+        document.getElementById('btn-reset-day').addEventListener('click', () => {
+            if(confirm("Сбросить ДНЕВНУЮ статистику? (Общий баланс останется)")) {
+                appState.balance -= appState.dailyPnl; appState.dailyPnl = 0; appState.streak = 0; appState.tradesCount = 0; appState.status = "ACTIVE"; saveState();
+            }
+        });
+
+        const checkAccountRules = () => {
+            const rules = PHASES[appState.phase];
+            if (appState.balance <= rules.maxLoss) appState.status = "BLOWN_TOTAL";
+            else if (appState.dailyPnl <= rules.dailyLimit) appState.status = "BLOWN_DAILY";
+            else if (appState.balance >= rules.target && rules.target !== Infinity) appState.status = "PASSED";
+        };
+
+        document.getElementById('btn-next-phase').addEventListener('click', () => {
+            if (appState.phase < 3) { appState.phase++; appState.balance = STARTING_BALANCE; appState.dailyPnl = 0; appState.streak = 0; appState.tradesCount = 0; appState.status = "ACTIVE"; saveState(); }
+        });
+        document.getElementById('btn-restart-challenge').addEventListener('click', () => {
+            if(confirm("Полный сброс всего аккаунта? Возврат к Фазе 1.")) { appState = { phase: 1, balance: STARTING_BALANCE, date: new Date().toDateString(), dailyPnl: 0, streak: 0, tradesCount: 0, status: "ACTIVE" }; saveState(); }
+        });
+
+        const renderUI = () => {
+            const rules = PHASES[appState.phase];
+            document.getElementById('phase-badge').textContent = rules.title;
+            document.getElementById('account-balance-text').textContent = `$${appState.balance.toLocaleString()}`;
+            document.getElementById('phase-target-text').textContent = rules.target === Infinity ? "NO LIMIT" : `$${rules.target.toLocaleString()}`;
+            document.getElementById('phase-loss-text').textContent = `$${rules.maxLoss.toLocaleString()}`;
+
+            const progFill = document.getElementById('phase-progress-fill'); const lossFill = document.getElementById('phase-loss-fill');
+            progFill.style.width = '0%'; lossFill.style.width = '0%';
+            if (appState.balance > STARTING_BALANCE && rules.target !== Infinity) {
+                progFill.style.width = `${Math.min(100, ((appState.balance - STARTING_BALANCE) / (rules.target - STARTING_BALANCE)) * 100)}%`;
+            } else if (appState.balance < STARTING_BALANCE) {
+                lossFill.style.width = `${Math.min(100, ((STARTING_BALANCE - appState.balance) / (STARTING_BALANCE - rules.maxLoss)) * 100)}%`;
+            }
+
+            const pnlText = document.getElementById('daily-pnl-text');
+            pnlText.textContent = appState.dailyPnl >= 0 ? `+$${appState.dailyPnl}` : `-$${Math.abs(appState.dailyPnl)}`;
+            pnlText.className = appState.dailyPnl > 0 ? "font-mono text-base font-bold text-fp-green" : (appState.dailyPnl < 0 ? "font-mono text-base font-bold text-fp-red" : "font-mono text-base font-bold text-zinc-300");
+
+            let radarPct = 50 + (appState.dailyPnl / Math.abs(rules.dailyLimit)) * 50; 
+            document.getElementById('pnl-pin').style.left = `${Math.max(0, Math.min(100, radarPct))}%`;
+
+            const dailyRem = Math.max(0, appState.dailyPnl - rules.dailyLimit); 
+            const remTxt = document.getElementById('daily-rem-text'); remTxt.textContent = `$${dailyRem}`;
+            if (dailyRem <= 100) remTxt.className = "text-lg font-mono font-bold text-fp-red";
+            else if (dailyRem <= 250) remTxt.className = "text-lg font-mono font-bold text-fp-warn";
+            else remTxt.className = "text-lg font-mono font-bold text-fp-green";
+
+            document.getElementById('trade-count-text').textContent = appState.tradesCount;
+            const warnDot = document.getElementById('overtrade-warn');
+            if(appState.tradesCount >= 5) { document.getElementById('trade-count-text').className = "text-lg font-mono font-bold text-fp-red"; warnDot.classList.remove('hidden'); } 
+            else { document.getElementById('trade-count-text').className = "text-lg font-mono font-bold text-zinc-200"; warnDot.classList.add('hidden'); }
+
+            const dots = document.getElementById('streak-dots').children;
+            for(let i=0; i<3; i++) dots[i].className = i < appState.streak ? "w-2.5 h-2.5 rounded-full bg-fp-red shadow-[0_0_8px_#ef4444]" : "w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-600";
+        };
+
+        const schedule = [
+            { start: '00:00', end: '06:30', type: 'sleep', title: 'Время сна', desc: 'Восстановление ЦНС. Терминал выключен.', msg: "Глубокий сон. Мозг должен отдохнуть." },
+            { start: '06:30', end: '08:00', type: 'prep', title: 'Пробуждение', desc: 'Подъем. Зарядка, завтрак.', msg: "Подъем. Никаких графиков." },
+            { start: '08:00', end: '09:00', type: 'prep', title: 'Пре-маркет', desc: 'Анализ HTF, уровни.', msg: "Время пре-маркета." },
+            { start: '09:00', end: '12:00', type: 'trade', title: 'Лондонская Сессия', desc: 'ИСПОЛНЕНИЕ: Основное окно.', msg: "Лондон открыт. Чек-лист активен." },
+            { start: '12:00', end: '14:30', type: 'rest', title: 'Обед', desc: 'Отойди от рабочего стола.', msg: "Терминал закрыт!" },
+            { start: '14:30', end: '17:00', type: 'trade', title: 'Нью-Йоркская Сессия', desc: 'ИСПОЛНЕНИЕ: Волатильность.', msg: "Нью-Йорк активен. Фокус." },
+            { start: '17:00', end: '24:00', type: 'rest', title: 'Отдых', desc: 'Запись сделок, терминал офф.', msg: "Конец торгов! Заполни журнал." }
+        ];
+
+        const timeToMins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+
+        const updateDashboard = () => {
+            const now = new Date();
+            const dateStr = now.toDateString();
+            if (localStorage.getItem('fp_last_day') !== dateStr) {
+                notifiedEvents.clear();
+                localStorage.removeItem('fp_news_plan');
+                isNewsPlanSet = false;
+                newsEvents = [];
+                tempNewsList = [];
+                document.getElementById('news-setup-form').classList.remove('hidden');
+                document.getElementById('news-setup-status').textContent = "Не задано";
+                document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
+                localStorage.setItem('fp_last_day', dateStr);
+            }
+
+            const currentMins = now.getHours() * 60 + now.getMinutes();
+            const nowMs = now.getTime();
+
+            document.getElementById('live-time').textContent = now.toLocaleTimeString('ru-RU', {hour12: false});
+            document.getElementById('live-date').textContent = now.toLocaleDateString('ru-RU').replace(/\//g, '.');
+
+            const list = document.getElementById('schedule-list'); list.innerHTML = ''; let activeSlot = null;
+            schedule.forEach(s => {
+                const startMins = timeToMins(s.start); let endMins = timeToMins(s.end); if (endMins === 0) endMins = 1440;
+                const isActive = currentMins >= startMins && currentMins < endMins;
+                if (isActive) { activeSlot = s; if (!notifiedEvents.has(`sched_${s.start}`)) { firePush(`🕒 ${s.title}`, s.msg); notifiedEvents.add(`sched_${s.start}`); } }
+                let stateClass = isActive ? 'text-white' : (currentMins > startMins ? 'text-zinc-600' : 'text-zinc-500');
+                let dotClass = isActive ? (s.type === 'trade' ? 'bg-fp-green shadow-[0_0_10px_#10b981] border-zinc-900' : 'bg-fp-blue shadow-[0_0_10px_#3b82f6] border-zinc-900') : 'bg-zinc-800 border-zinc-900';
+                list.insertAdjacentHTML('beforeend', `<div class="relative pl-10 transition-opacity ${isActive ? 'opacity-100 scale-[1.02]' : 'opacity-70'}"><div class="absolute left-[-5px] top-1.5 w-3.5 h-3.5 rounded-full border-4 z-10 transition-all ${dotClass}"></div><div class="font-mono text-xs font-bold ${isActive ? 'text-zinc-300' : 'text-zinc-600'}">${s.start}</div><div class="text-sm font-bold ${stateClass} mt-0.5">${s.title}</div><div class="text-xs text-zinc-500 mt-1">${s.desc}</div></div>`);
+            });
+
+            const nList = document.getElementById('news-list');
+            let isDanger = false; let dangerMsg = "";
+            
+            if (isNewsPlanSet) {
+                if (newsEvents.length === 0) {
+                     nList.innerHTML = `<li class="p-5 text-center text-sm font-bold text-fp-green uppercase tracking-wider">На сегодня красных новостей нет.</li>`;
+                } else {
+                    nList.innerHTML = '';
+                    newsEvents.forEach((n) => {
+                        const diffMins = (n.timestamp - nowMs) / 60000;
+                        const isPast = diffMins < -15;
+                        const inZone = diffMins >= -15 && diffMins <= 15;
+                        
+                        if (diffMins > 0 && diffMins <= 16 && !notifiedEvents.has(`news_${n.timestamp}`)) { 
+                            firePush("⚠️ НОВОСТИ", `Через ${Math.round(diffMins)} мин: ${n.currency} ${n.title}`); 
+                            notifiedEvents.add(`news_${n.timestamp}`); 
+                        }
+                        if (inZone) { isDanger = true; dangerMsg = `${n.currency} ${n.title}`; }
+                        
+                        let dot = inZone ? '<div class="w-2 h-2 rounded-full bg-fp-red shadow-[0_0_8px_#ef4444] animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-zinc-600"></div>';
+                        nList.insertAdjacentHTML('beforeend', `<li class="px-5 py-3 flex items-center gap-4 transition-colors ${inZone ? 'bg-fp-red/10 border-l-2 border-fp-red' : (isPast ? 'opacity-40 grayscale' : 'hover:bg-zinc-800/50')}">${dot}<div class="font-mono text-sm font-bold text-zinc-300 w-12">${n.timeStr}</div><div class="text-xs font-bold text-fp-red bg-fp-red/10 px-1.5 py-0.5 rounded border border-fp-red/20">${n.currency}</div><div class="text-sm font-medium text-zinc-400 truncate">${n.title}</div></li>`);
+                    });
+                }
+            }
+
+            const checkInputs = document.querySelectorAll('#chk-psych, #chk-setup, #chk-risk, #chk-stop');
+            const chkOk = Array.from(checkInputs).every(c => c.checked);
+
+            const banner = document.getElementById('status-banner'); const icon = document.getElementById('status-icon'); const title = document.getElementById('status-title'); const msg = document.getElementById('status-msg');
+            const btnNext = document.getElementById('btn-next-phase'); const btnRestart = document.getElementById('btn-restart-challenge');
+            
+            banner.className = "rounded-2xl p-6 text-center transition-all duration-300 border bg-zinc-900 border-zinc-800 flex flex-col items-center justify-center"; 
+            btnNext.classList.add('hidden'); btnRestart.classList.add('hidden');
+
+            if (appState.status === "PASSED") {
+                banner.classList.add('glow-gold', 'bg-gold/10'); icon.textContent = "🏆"; title.textContent = "ЦЕЛЬ ДОСТИГНУТА"; title.className = "text-2xl font-black uppercase tracking-wider text-gold mb-1";
+                msg.textContent = "Поздравляю. Торговля заблокирована. Дождись проверки аккаунта.";
+                if (appState.phase < 3) btnNext.classList.remove('hidden');
+            } else if (appState.status === "BLOWN_TOTAL" || appState.status === "BLOWN_DAILY") {
+                banner.classList.add('glow-red', 'border-fp-red', 'bg-darkred/20'); icon.textContent = "💀"; title.textContent = "АККАУНТ СЛИТ"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-red mb-1";
+                msg.textContent = appState.status === "BLOWN_TOTAL" ? "Превышен общий лимит потерь." : "Превышен дневной лимит потерь.";
+                btnRestart.classList.remove('hidden');
+            } else if (!isNewsPlanSet) {
+                banner.classList.add('glow-warn', 'border-fp-warn'); icon.textContent = "📋"; title.textContent = "ПРЕ-МАРКЕТ БЛОК"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-warn mb-1";
+                msg.textContent = "Система заблокирована. Скопируй новости с ForexFactory и утверди план на день.";
+            } else if (appState.streak >= 3) {
+                banner.classList.add('glow-red', 'border-fp-red'); icon.textContent = "🧠"; title.textContent = "ТИЛЬТ ЛОК (3 ЛОССА)"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-red mb-1";
+                msg.textContent = "3 стопа подряд. Твоя психика нестабильна. ТОРГОВЛЯ ОКОНЧЕНА на сегодня.";
+            } else if (appState.tradesCount >= 5) {
+                banner.classList.add('glow-warn', 'border-fp-warn'); icon.textContent = "🎰"; title.textContent = "ОВЕРТРЕЙДИНГ"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-warn mb-1";
+                msg.textContent = `Ты сделал ${appState.tradesCount} сделок. Остановись, пока не слил депозит.`;
+            } else if (isDanger) {
+                banner.classList.add('glow-warn', 'border-fp-warn'); icon.textContent = "🛑"; title.textContent = "КРАСНАЯ ЗОНА НОВОСТЕЙ"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-warn mb-1";
+                msg.textContent = `±15 мин от: ${dangerMsg}. Закрыть все позиции. Руки на стол.`;
+            } else if (!activeSlot || activeSlot.type !== 'trade') {
+                icon.textContent = "☕"; title.textContent = "ВНЕ РЫНКА"; title.className = "text-2xl font-black uppercase tracking-wider text-zinc-400 mb-1";
+                msg.textContent = `Текущая фаза: ${activeSlot ? activeSlot.title : 'Отдых'}. Терминал закрыт.`;
+            } else if (!chkOk) {
+                icon.textContent = "⚠️"; title.textContent = "БЛОКИРОВКА ЧЕК-ЛИСТА"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-warn mb-1";
+                msg.textContent = "Торговое окно открыто, но ты не прошел чек-лист. Никаких входов.";
+            } else {
+                banner.classList.add('glow-green', 'border-fp-green'); icon.textContent = "🎯"; title.textContent = "EXECUTE (ИДЕТ ОХОТА)"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-green mb-1";
+                msg.textContent = "Система, сетап, риск. Исполняй свой план без эмоций.";
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => { loadState(); setInterval(updateDashboard, 1000); });
+        document.getElementById('btn-reset').addEventListener('click', () => { const cb = document.querySelectorAll('#chk-psych, #chk-setup, #chk-risk, #chk-stop'); cb.forEach(c => c.checked = false); updateDashboard(); });
+    </script>
+</body>
+</html>
