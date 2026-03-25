@@ -41,6 +41,9 @@
         input[type="checkbox"]:checked { background-color: rgba(16, 185, 129, 0.1); border-color: #10b981; }
         input[type="checkbox"]:checked::before { transform: scale(1); }
 
+        .danger-checkbox input[type="checkbox"]::before { box-shadow: inset 1em 1em #ef4444; }
+        .danger-checkbox input[type="checkbox"]:checked { background-color: rgba(239, 68, 68, 0.1); border-color: #ef4444; }
+
         .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
         .glow-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
         .glow-warn { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
@@ -87,6 +90,7 @@
 
         <!-- ЛЕВАЯ КОЛОНКА -->
         <div class="space-y-6">
+            <!-- Чек-лист -->
             <section class="glass-panel rounded-2xl overflow-hidden">
                 <div class="px-5 py-4 border-b border-zinc-800 flex justify-between items-center">
                     <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Чек-лист исполнения</h3>
@@ -94,20 +98,20 @@
                 </div>
                 <div class="p-5 space-y-4">
                     <label class="flex items-start gap-4 cursor-pointer group">
-                        <input type="checkbox" id="chk-psych" class="mt-0.5 shrink-0">
-                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Психология в норме: нет тильта, фомо или желания отыграться.</span>
+                        <input type="checkbox" id="chk-trend" class="checklist-item mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed"><strong class="text-zinc-200">НАПРАВЛЕНИЕ:</strong> Сделка по тренду старшего таймфрейма (HTF). Я не пытаюсь поймать разворот на эмоциях.</span>
                     </label>
                     <label class="flex items-start gap-4 cursor-pointer group">
-                        <input type="checkbox" id="chk-setup" class="mt-0.5 shrink-0">
-                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Сетап категории A+. Строго по торговому плану.</span>
+                        <input type="checkbox" id="chk-trigger" class="checklist-item mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed"><strong class="text-zinc-200">ТРИГГЕР:</strong> Цена вошла в мою зону (POI). Есть подтверждение входа по стратегии. Захожу не от скуки.</span>
                     </label>
                     <label class="flex items-start gap-4 cursor-pointer group">
-                        <input type="checkbox" id="chk-risk" class="mt-0.5 shrink-0">
-                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Риск 0.5% (макс $50). Размер позиции жестко рассчитан.</span>
+                        <input type="checkbox" id="chk-math" class="checklist-item mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed"><strong class="text-zinc-200">МАТЕМАТИКА:</strong> Потенциальный тейк минимум в 2 раза больше риска (RR 1:2+). Объем рассчитан строго до $50.</span>
                     </label>
                     <label class="flex items-start gap-4 cursor-pointer group">
-                        <input type="checkbox" id="chk-stop" class="mt-0.5 shrink-0">
-                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed">Hard Stop-Loss выставлен до входа в сделку.</span>
+                        <input type="checkbox" id="chk-protect" class="checklist-item mt-0.5 shrink-0">
+                        <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed"><strong class="text-zinc-200">ЗАЩИТА:</strong> Я принял убыток до входа. Стоп-лосс стоит за техническим уровнем отмены сценария.</span>
                     </label>
                 </div>
                 <div class="px-5 py-3 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center">
@@ -116,7 +120,7 @@
                 </div>
             </section>
 
-            <!-- БЛОК МАНУАЛЬНЫХ НОВОСТЕЙ (SMART PASTE) -->
+            <!-- План на день -->
             <section class="glass-panel rounded-2xl overflow-hidden relative">
                 <div class="px-5 py-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
                     <div>
@@ -126,7 +130,6 @@
                     <div id="news-setup-status" class="text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Не задано</div>
                 </div>
 
-                <!-- Smart Paste Форма -->
                 <div id="news-setup-form" class="p-5 border-b border-zinc-800 bg-zinc-900">
                     <p class="text-xs text-zinc-400 mb-3">Скопируй строку с ForexFactory и вставь сюда. Система сама найдет время и валюту.</p>
                     <div class="flex gap-2 mb-3">
@@ -143,7 +146,7 @@
 
                 <div class="p-0">
                     <ul id="news-list" class="divide-y divide-zinc-800/50">
-                        <!-- Сюда падают добавленные новости -->
+                        <!-- JS Inject -->
                     </ul>
                 </div>
             </section>
@@ -151,6 +154,7 @@
 
         <!-- ПРАВАЯ КОЛОНКА -->
         <div class="space-y-6">
+            
             <section class="glass-panel rounded-2xl overflow-hidden p-5 border-t-2 border-t-fp-blue">
                 <div class="flex justify-between items-end mb-4">
                     <div>
@@ -274,7 +278,6 @@
             }
         };
 
-        // --- CORE STATE ---
         const STARTING_BALANCE = 10000;
         const PHASES = {
             1: { target: 10800, maxLoss: 9000, dailyLimit: -500, title: "Фаза 1: Студент" },
@@ -317,14 +320,10 @@
 
         const saveState = () => { localStorage.setItem('fp_master_state', JSON.stringify(appState)); renderUI(); updateDashboard(); };
 
-        // --- SMART PASTE NEWS LOGIC ---
         let tempNewsList = [];
 
-        // Parsing function
         const parseNewsLine = (rawText) => {
-            // Regex for time (matches "10:30", "10:30am", "2:30 PM")
             const timeMatch = rawText.match(/\b(\d{1,2}:\d{2}(?:\s?[aApP][mM])?)\b/);
-            // Regex for currency (matches exactly 3 uppercase letters bounded by spaces or start/end)
             const currencyMatch = rawText.match(/\b([A-Z]{3})\b/);
 
             if (!timeMatch || !currencyMatch) return null;
@@ -332,15 +331,10 @@
             let timeRaw = timeMatch[1].trim();
             const currency = currencyMatch[1];
             
-            // Clean title by removing the time, currency, and leading/trailing junk
             let title = rawText.replace(timeRaw, '').replace(currency, '')
-                               .replace(/^[,\s-]+|[,\s-]+$/g, '') // Trim commas, spaces, dashes at start/end
-                               .replace(/\s{2,}/g, ' ')           // Remove double spaces
-                               .trim();
-            
+                               .replace(/^[,\s-]+|[,\s-]+$/g, '').replace(/\s{2,}/g, ' ').trim();
             if (!title) title = "Макро-событие";
 
-            // Convert AM/PM to 24h format if needed
             let parsedTime = timeRaw;
             if (timeRaw.toLowerCase().includes('m')) {
                 const isPM = timeRaw.toLowerCase().includes('p');
@@ -412,7 +406,6 @@
             updateDashboard();
         };
 
-        // --- TRANSACTIONS ---
         document.getElementById('btn-add-trade').addEventListener('click', () => {
             if (appState.status !== "ACTIVE" || !isNewsPlanSet) return; 
             const inputEl = document.getElementById('trade-input');
@@ -482,15 +475,32 @@
             for(let i=0; i<3; i++) dots[i].className = i < appState.streak ? "w-2.5 h-2.5 rounded-full bg-fp-red shadow-[0_0_8px_#ef4444]" : "w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-600";
         };
 
-        const schedule = [
-            { start: '00:00', end: '06:30', type: 'sleep', title: 'Время сна', desc: 'Восстановление ЦНС. Терминал выключен.', msg: "Глубокий сон. Мозг должен отдохнуть." },
-            { start: '06:30', end: '08:00', type: 'prep', title: 'Пробуждение', desc: 'Подъем. Зарядка, завтрак.', msg: "Подъем. Никаких графиков." },
-            { start: '08:00', end: '09:00', type: 'prep', title: 'Пре-маркет', desc: 'Анализ HTF, уровни.', msg: "Время пре-маркета." },
-            { start: '09:00', end: '12:00', type: 'trade', title: 'Лондонская Сессия', desc: 'ИСПОЛНЕНИЕ: Основное окно.', msg: "Лондон открыт. Чек-лист активен." },
-            { start: '12:00', end: '14:30', type: 'rest', title: 'Обед', desc: 'Отойди от рабочего стола.', msg: "Терминал закрыт!" },
-            { start: '14:30', end: '17:00', type: 'trade', title: 'Нью-Йоркская Сессия', desc: 'ИСПОЛНЕНИЕ: Волатильность.', msg: "Нью-Йорк активен. Фокус." },
-            { start: '17:00', end: '24:00', type: 'rest', title: 'Отдых', desc: 'Запись сделок, терминал офф.', msg: "Конец торгов! Заполни журнал." }
-        ];
+        const getLocalTimeFor = (targetHour, targetMinute, targetTimeZone) => {
+            const now = new Date();
+            const tzDateStr = now.toLocaleString("en-US", {timeZone: targetTimeZone, hour12: false, hour: 'numeric', minute: 'numeric'});
+            const [tzH, tzM] = tzDateStr.split(':').map(Number);
+            let diffMins = (targetHour * 60 + targetMinute) - (tzH * 60 + tzM);
+            if (diffMins > 720) diffMins -= 1440;
+            if (diffMins < -720) diffMins += 1440;
+            const localMins = now.getHours() * 60 + now.getMinutes() + diffMins;
+            let finalH = Math.floor(localMins / 60) % 24;
+            let finalM = localMins % 60;
+            if (finalH < 0) finalH += 24;
+            if (finalM < 0) { finalM += 60; finalH -= 1; }
+            return `${finalH.toString().padStart(2,'0')}:${finalM.toString().padStart(2,'0')}`;
+        };
+
+        const buildSchedule = () => {
+            return [
+                { start: '00:00', end: getLocalTimeFor(7, 0, 'Europe/London'), type: 'sleep', title: 'Вне рынка / Сон', desc: 'Восстановление. Терминал выключен.', msg: "Азия. Спи." },
+                { start: getLocalTimeFor(7, 0, 'Europe/London'), end: getLocalTimeFor(8, 0, 'Europe/London'), type: 'prep', title: 'Пре-маркет (Лондон)', desc: 'Разметка HTF, поиск POI. Без сделок.', msg: "Пре-маркет. Только анализ." },
+                { start: getLocalTimeFor(8, 0, 'Europe/London'), end: getLocalTimeFor(10, 30, 'Europe/London'), type: 'trade', title: 'Лондон (Исполнение)', desc: 'Поиск сетапов и вход в рынок.', msg: "Лондон открыт. Охота." },
+                { start: getLocalTimeFor(10, 30, 'Europe/London'), end: getLocalTimeFor(7, 30, 'America/New_York'), type: 'rest', title: 'Мертвая зона / Обед', desc: 'Снижение объемов. Отойди от графиков.', msg: "Затишье. Уйди от монитора." },
+                { start: getLocalTimeFor(7, 30, 'America/New_York'), end: getLocalTimeFor(8, 30, 'America/New_York'), type: 'prep', title: 'Пре-маркет (Нью-Йорк)', desc: 'Корректировка плана, новые POI.', msg: "NY Пре-маркет. Подготовка." },
+                { start: getLocalTimeFor(8, 30, 'America/New_York'), end: getLocalTimeFor(11, 30, 'America/New_York'), type: 'trade', title: 'Нью-Йорк (Исполнение)', desc: 'Высокая волатильность. Исполняем план.', msg: "Нью-Йорк в игре. Фокус." },
+                { start: getLocalTimeFor(11, 30, 'America/New_York'), end: '23:59', type: 'rest', title: 'Конец торгов', desc: 'Журнал, анализ ошибок. Никаких сделок.', msg: "Торги закрыты. Заполни журнал." }
+            ];
+        };
 
         const timeToMins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
@@ -507,6 +517,8 @@
                 document.getElementById('news-setup-status').textContent = "Не задано";
                 document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
                 localStorage.setItem('fp_last_day', dateStr);
+                const checkInputs = document.querySelectorAll('.checklist-item');
+                checkInputs.forEach(c => c.checked = false);
             }
 
             const currentMins = now.getHours() * 60 + now.getMinutes();
@@ -515,13 +527,14 @@
             document.getElementById('live-time').textContent = now.toLocaleTimeString('ru-RU', {hour12: false});
             document.getElementById('live-date').textContent = now.toLocaleDateString('ru-RU').replace(/\//g, '.');
 
+            const schedule = buildSchedule();
             const list = document.getElementById('schedule-list'); list.innerHTML = ''; let activeSlot = null;
             schedule.forEach(s => {
                 const startMins = timeToMins(s.start); let endMins = timeToMins(s.end); if (endMins === 0) endMins = 1440;
                 const isActive = currentMins >= startMins && currentMins < endMins;
                 if (isActive) { activeSlot = s; if (!notifiedEvents.has(`sched_${s.start}`)) { firePush(`🕒 ${s.title}`, s.msg); notifiedEvents.add(`sched_${s.start}`); } }
                 let stateClass = isActive ? 'text-white' : (currentMins > startMins ? 'text-zinc-600' : 'text-zinc-500');
-                let dotClass = isActive ? (s.type === 'trade' ? 'bg-fp-green shadow-[0_0_10px_#10b981] border-zinc-900' : 'bg-fp-blue shadow-[0_0_10px_#3b82f6] border-zinc-900') : 'bg-zinc-800 border-zinc-900';
+                let dotClass = isActive ? (s.type === 'trade' ? 'bg-fp-green shadow-[0_0_10px_#10b981] border-zinc-900' : (s.type === 'prep' ? 'bg-fp-warn shadow-[0_0_10px_#f59e0b] border-zinc-900' : 'bg-fp-blue shadow-[0_0_10px_#3b82f6] border-zinc-900')) : 'bg-zinc-800 border-zinc-900';
                 list.insertAdjacentHTML('beforeend', `<div class="relative pl-10 transition-opacity ${isActive ? 'opacity-100 scale-[1.02]' : 'opacity-70'}"><div class="absolute left-[-5px] top-1.5 w-3.5 h-3.5 rounded-full border-4 z-10 transition-all ${dotClass}"></div><div class="font-mono text-xs font-bold ${isActive ? 'text-zinc-300' : 'text-zinc-600'}">${s.start}</div><div class="text-sm font-bold ${stateClass} mt-0.5">${s.title}</div><div class="text-xs text-zinc-500 mt-1">${s.desc}</div></div>`);
             });
 
@@ -539,10 +552,10 @@
                         const inZone = diffMins >= -15 && diffMins <= 15;
                         
                         if (diffMins > 0 && diffMins <= 16 && !notifiedEvents.has(`news_${n.timestamp}`)) { 
-                            firePush("⚠️ НОВОСТИ", `Через ${Math.round(diffMins)} мин: ${n.currency} ${n.title}`); 
+                            firePush("⚠️ НОВОСТИ", `Через ${Math.round(diffMins)} мин: ${n.currency}`); 
                             notifiedEvents.add(`news_${n.timestamp}`); 
                         }
-                        if (inZone) { isDanger = true; dangerMsg = `${n.currency} ${n.title}`; }
+                        if (inZone) { isDanger = true; dangerMsg = `${n.currency}`; }
                         
                         let dot = inZone ? '<div class="w-2 h-2 rounded-full bg-fp-red shadow-[0_0_8px_#ef4444] animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-zinc-600"></div>';
                         nList.insertAdjacentHTML('beforeend', `<li class="px-5 py-3 flex items-center gap-4 transition-colors ${inZone ? 'bg-fp-red/10 border-l-2 border-fp-red' : (isPast ? 'opacity-40 grayscale' : 'hover:bg-zinc-800/50')}">${dot}<div class="font-mono text-sm font-bold text-zinc-300 w-12">${n.timeStr}</div><div class="text-xs font-bold text-fp-red bg-fp-red/10 px-1.5 py-0.5 rounded border border-fp-red/20">${n.currency}</div><div class="text-sm font-medium text-zinc-400 truncate">${n.title}</div></li>`);
@@ -550,7 +563,7 @@
                 }
             }
 
-            const checkInputs = document.querySelectorAll('#chk-psych, #chk-setup, #chk-risk, #chk-stop');
+            const checkInputs = document.querySelectorAll('.checklist-item');
             const chkOk = Array.from(checkInputs).every(c => c.checked);
 
             const banner = document.getElementById('status-banner'); const icon = document.getElementById('status-icon'); const title = document.getElementById('status-title'); const msg = document.getElementById('status-msg');
@@ -581,7 +594,7 @@
                 msg.textContent = `±15 мин от: ${dangerMsg}. Закрыть все позиции. Руки на стол.`;
             } else if (!activeSlot || activeSlot.type !== 'trade') {
                 icon.textContent = "☕"; title.textContent = "ВНЕ РЫНКА"; title.className = "text-2xl font-black uppercase tracking-wider text-zinc-400 mb-1";
-                msg.textContent = `Текущая фаза: ${activeSlot ? activeSlot.title : 'Отдых'}. Терминал закрыт.`;
+                msg.textContent = `Текущая фаза: ${activeSlot ? activeSlot.title : 'Отдых'}. Терминал закрыт. ${activeSlot && activeSlot.type === 'prep' ? 'Время анализировать графики.' : ''}`;
             } else if (!chkOk) {
                 icon.textContent = "⚠️"; title.textContent = "БЛОКИРОВКА ЧЕК-ЛИСТА"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-warn mb-1";
                 msg.textContent = "Торговое окно открыто, но ты не прошел чек-лист. Никаких входов.";
@@ -592,7 +605,7 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => { loadState(); setInterval(updateDashboard, 1000); });
-        document.getElementById('btn-reset').addEventListener('click', () => { const cb = document.querySelectorAll('#chk-psych, #chk-setup, #chk-risk, #chk-stop'); cb.forEach(c => c.checked = false); updateDashboard(); });
+        document.getElementById('btn-reset').addEventListener('click', () => { const cb = document.querySelectorAll('.checklist-item'); cb.forEach(c => c.checked = false); updateDashboard(); });
     </script>
 </body>
 </html>
