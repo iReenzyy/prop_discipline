@@ -127,7 +127,10 @@
                         <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">План на день: Макро</h3>
                         <span class="text-[10px] text-zinc-500 font-mono">Правило ±15 Мин (Красные папки)</span>
                     </div>
-                    <div id="news-setup-status" class="text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Не задано</div>
+                    <div class="flex items-center gap-3">
+                        <button id="btn-reset-news-plan" class="hidden text-[10px] text-zinc-500 hover:text-white transition-colors uppercase font-bold tracking-wider">Сбросить</button>
+                        <div id="news-setup-status" class="text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Не задано</div>
+                    </div>
                 </div>
 
                 <div id="news-setup-form" class="p-5 border-b border-zinc-800 bg-zinc-900">
@@ -233,7 +236,7 @@
 
             <section class="glass-panel rounded-2xl overflow-hidden">
                 <div class="px-5 py-4 border-b border-zinc-800">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Режим киборга</h3>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Режим киборга (Авто-часовые пояса)</h3>
                 </div>
                 <div class="p-5">
                     <div id="schedule-list" class="space-y-4 relative before:absolute before:inset-y-0 before:left-[27px] before:w-[2px] before:bg-zinc-800">
@@ -307,12 +310,14 @@
                 newsEvents = savedNews.events;
                 isNewsPlanSet = true;
                 document.getElementById('news-setup-form').classList.add('hidden');
+                document.getElementById('btn-reset-news-plan').classList.remove('hidden');
                 document.getElementById('news-setup-status').textContent = "УТВЕРЖДЕНО";
                 document.getElementById('news-setup-status').className = "text-[10px] text-fp-green border border-fp-green/30 bg-fp-green/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
             } else {
                 isNewsPlanSet = false;
                 newsEvents = [];
                 document.getElementById('news-setup-form').classList.remove('hidden');
+                document.getElementById('btn-reset-news-plan').classList.add('hidden');
             }
 
             renderUI();
@@ -390,6 +395,20 @@
 
         document.getElementById('btn-no-news').addEventListener('click', () => { saveNewsPlan([]); });
 
+        document.getElementById('btn-reset-news-plan').addEventListener('click', () => {
+            if(confirm("Сбросить утвержденный план новостей? Тебе придется заполнить его заново.")) {
+                localStorage.removeItem('fp_news_plan');
+                isNewsPlanSet = false;
+                newsEvents = [];
+                tempNewsList = [];
+                document.getElementById('news-setup-form').classList.remove('hidden');
+                document.getElementById('btn-reset-news-plan').classList.add('hidden');
+                document.getElementById('news-setup-status').textContent = "Не задано";
+                document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
+                updateDashboard();
+            }
+        });
+
         const saveNewsPlan = (eventsArray) => {
             const now = new Date();
             newsEvents = eventsArray.map(n => {
@@ -401,6 +420,7 @@
             localStorage.setItem('fp_news_plan', JSON.stringify({ date: now.toDateString(), events: newsEvents }));
             isNewsPlanSet = true;
             document.getElementById('news-setup-form').classList.add('hidden');
+            document.getElementById('btn-reset-news-plan').classList.remove('hidden');
             document.getElementById('news-setup-status').textContent = "УТВЕРЖДЕНО";
             document.getElementById('news-setup-status').className = "text-[10px] text-fp-green border border-fp-green/30 bg-fp-green/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
             updateDashboard();
@@ -514,6 +534,7 @@
                 newsEvents = [];
                 tempNewsList = [];
                 document.getElementById('news-setup-form').classList.remove('hidden');
+                document.getElementById('btn-reset-news-plan').classList.add('hidden');
                 document.getElementById('news-setup-status').textContent = "Не задано";
                 document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
                 localStorage.setItem('fp_last_day', dateStr);
