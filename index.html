@@ -96,7 +96,7 @@
                     <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Чек-лист исполнения</h3>
                     <button id="btn-notify" class="text-[10px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-400 transition-colors uppercase font-bold">Пуши: OFF</button>
                 </div>
-                <div class="p-5 space-y-4">
+                <div id="checklist-items-container" class="p-5 space-y-4">
                     <label class="flex items-start gap-4 cursor-pointer group">
                         <input type="checkbox" id="chk-trend" class="checklist-item mt-0.5 shrink-0">
                         <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed"><strong class="text-zinc-200">НАПРАВЛЕНИЕ:</strong> Сделка по тренду старшего таймфрейма (HTF). Я не пытаюсь поймать разворот на эмоциях.</span>
@@ -113,6 +113,11 @@
                         <input type="checkbox" id="chk-protect" class="checklist-item mt-0.5 shrink-0">
                         <span class="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors leading-relaxed"><strong class="text-zinc-200">ЗАЩИТА:</strong> Я принял убыток до входа. Стоп-лосс стоит за техническим уровнем отмены сценария.</span>
                     </label>
+                </div>
+                <div id="checklist-success" class="hidden p-6 text-center border-t border-zinc-800/50 bg-fp-green/5 transition-all duration-300">
+                    <div class="text-3xl mb-2">🛡️</div>
+                    <div class="text-sm font-black uppercase tracking-widest text-fp-green mb-1">Чек-лист пройден</div>
+                    <div class="text-xs font-medium text-zinc-400">Система готова. Ожидание идеального входа.</div>
                 </div>
                 <div class="px-5 py-3 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center">
                     <span id="chk-status" class="text-xs font-bold uppercase text-fp-red">Не готов</span>
@@ -181,7 +186,7 @@
             <section class="glass-panel rounded-2xl overflow-hidden p-5">
                 <div class="flex justify-between items-center mb-5">
                     <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-300">Транзакции и Риск (Сегодня)</h3>
-                    <div class="text-xs font-mono text-zinc-500">Max Loss: -$500</div>
+                    <div class="text-xs font-mono text-zinc-500">Макс. убыток: -$500</div>
                 </div>
                 
                 <div class="mb-6">
@@ -207,7 +212,7 @@
                     <div class="mt-2 flex justify-between items-center">
                         <button id="btn-reset-day" class="text-[10px] uppercase font-bold text-zinc-600 hover:text-zinc-300 transition-colors tracking-widest">Сбросить день</button>
                         <div>
-                            <span class="text-[10px] uppercase font-bold text-zinc-500 mr-1">Daily Net:</span>
+                            <span class="text-[10px] uppercase font-bold text-zinc-500 mr-1">Итог дня:</span>
                             <span id="daily-pnl-text" class="font-mono text-base font-bold text-zinc-300">$0</span>
                         </div>
                     </div>
@@ -293,16 +298,20 @@
         const loadState = () => {
             const saved = JSON.parse(localStorage.getItem('fp_master_state'));
             const dateStr = new Date().toDateString();
+            const lastDay = localStorage.getItem('fp_last_day');
             
-            if (saved) {
-                appState = { ...appState, ...saved };
-                if (appState.date !== dateStr) {
+            if (lastDay !== dateStr) {
+                localStorage.setItem('fp_last_day', dateStr);
+                if (saved) {
+                    appState = { ...appState, ...saved };
                     appState.date = dateStr;
                     appState.dailyPnl = 0; appState.streak = 0; appState.tradesCount = 0;
-                    notifiedEvents.clear();
-                    localStorage.removeItem('fp_news_plan');
-                    isNewsPlanSet = false;
                 }
+                notifiedEvents.clear();
+                localStorage.removeItem('fp_news_plan');
+                isNewsPlanSet = false;
+            } else if (saved) {
+                appState = { ...appState, ...saved };
             }
 
             const savedNews = JSON.parse(localStorage.getItem('fp_news_plan'));
@@ -462,7 +471,7 @@
             const rules = PHASES[appState.phase];
             document.getElementById('phase-badge').textContent = rules.title;
             document.getElementById('account-balance-text').textContent = `$${appState.balance.toLocaleString()}`;
-            document.getElementById('phase-target-text').textContent = rules.target === Infinity ? "NO LIMIT" : `$${rules.target.toLocaleString()}`;
+            document.getElementById('phase-target-text').textContent = rules.target === Infinity ? "БЕЗ ЛИМИТА" : `$${rules.target.toLocaleString()}`;
             document.getElementById('phase-loss-text').textContent = `$${rules.maxLoss.toLocaleString()}`;
 
             const progFill = document.getElementById('phase-progress-fill'); const lossFill = document.getElementById('phase-loss-fill');
@@ -527,7 +536,11 @@
         const updateDashboard = () => {
             const now = new Date();
             const dateStr = now.toDateString();
-            if (localStorage.getItem('fp_last_day') !== dateStr) {
+            if (appState.date !== dateStr) {
+                appState.date = dateStr;
+                appState.dailyPnl = 0;
+                appState.streak = 0;
+                appState.tradesCount = 0;
                 notifiedEvents.clear();
                 localStorage.removeItem('fp_news_plan');
                 isNewsPlanSet = false;
@@ -537,7 +550,7 @@
                 document.getElementById('btn-reset-news-plan').classList.add('hidden');
                 document.getElementById('news-setup-status').textContent = "Не задано";
                 document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
-                localStorage.setItem('fp_last_day', dateStr);
+                localStorage.setItem('fp_master_state', JSON.stringify(appState));
                 const checkInputs = document.querySelectorAll('.checklist-item');
                 checkInputs.forEach(c => c.checked = false);
             }
@@ -587,6 +600,18 @@
             const checkInputs = document.querySelectorAll('.checklist-item');
             const chkOk = Array.from(checkInputs).every(c => c.checked);
 
+            if (chkOk) {
+                document.getElementById('checklist-items-container').classList.add('hidden');
+                document.getElementById('checklist-success').classList.remove('hidden');
+                document.getElementById('chk-status').textContent = "ПРОЙДЕН";
+                document.getElementById('chk-status').className = "text-xs font-bold uppercase text-fp-green";
+            } else {
+                document.getElementById('checklist-items-container').classList.remove('hidden');
+                document.getElementById('checklist-success').classList.add('hidden');
+                document.getElementById('chk-status').textContent = "Не готов";
+                document.getElementById('chk-status').className = "text-xs font-bold uppercase text-fp-red";
+            }
+
             const banner = document.getElementById('status-banner'); const icon = document.getElementById('status-icon'); const title = document.getElementById('status-title'); const msg = document.getElementById('status-msg');
             const btnNext = document.getElementById('btn-next-phase'); const btnRestart = document.getElementById('btn-restart-challenge');
             
@@ -620,13 +645,22 @@
                 icon.textContent = "⚠️"; title.textContent = "БЛОКИРОВКА ЧЕК-ЛИСТА"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-warn mb-1";
                 msg.textContent = "Торговое окно открыто, но ты не прошел чек-лист. Никаких входов.";
             } else {
-                banner.classList.add('glow-green', 'border-fp-green'); icon.textContent = "🎯"; title.textContent = "EXECUTE (ИДЕТ ОХОТА)"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-green mb-1";
+                banner.classList.add('glow-green', 'border-fp-green'); icon.textContent = "🎯"; title.textContent = "РЕЖИМ ОХОТЫ"; title.className = "text-2xl font-black uppercase tracking-wider text-fp-green mb-1";
                 msg.textContent = "Система, сетап, риск. Исполняй свой план без эмоций.";
             }
         };
 
-        document.addEventListener('DOMContentLoaded', () => { loadState(); setInterval(updateDashboard, 1000); });
-        document.getElementById('btn-reset').addEventListener('click', () => { const cb = document.querySelectorAll('.checklist-item'); cb.forEach(c => c.checked = false); updateDashboard(); });
+        document.addEventListener('DOMContentLoaded', () => { 
+            loadState(); 
+            setInterval(updateDashboard, 1000); 
+            document.querySelectorAll('.checklist-item').forEach(cb => cb.addEventListener('change', updateDashboard));
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => { 
+            const cb = document.querySelectorAll('.checklist-item'); 
+            cb.forEach(c => c.checked = false); 
+            updateDashboard(); 
+        });
     </script>
 </body>
 </html>
