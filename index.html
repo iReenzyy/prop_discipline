@@ -300,30 +300,30 @@
             const dateStr = new Date().toDateString();
             const lastDay = localStorage.getItem('fp_last_day');
             
+            // Сначала вытягиваем все сохраненные данные (баланс, фазу и т.д.)
+            if (saved) {
+                appState = { ...appState, ...saved };
+            }
+
+            // Если наступили новые сутки
             if (lastDay !== dateStr) {
                 localStorage.setItem('fp_last_day', dateStr);
-                if (saved) {
-                    appState = { ...appState, ...saved };
-                    appState.date = dateStr;
-                    appState.dailyPnl = 0; appState.streak = 0; appState.tradesCount = 0;
-                }
+                appState.date = dateStr;
+                appState.dailyPnl = 0;
+                appState.streak = 0;
+                appState.tradesCount = 0;
+                
                 notifiedEvents.clear();
                 localStorage.removeItem('fp_news_plan');
                 isNewsPlanSet = false;
-            } else if (saved) {
-                appState = { ...appState, ...saved };
+                
+                // КРИТИЧЕСКИЙ ФИКС: Принудительно перезаписываем сейф обнуленными дневными данными
+                localStorage.setItem('fp_master_state', JSON.stringify(appState));
             }
 
             const savedNews = JSON.parse(localStorage.getItem('fp_news_plan'));
             if (savedNews && savedNews.date === dateStr) {
                 newsEvents = savedNews.events;
-                isNewsPlanSet = true;
-                document.getElementById('news-setup-form').classList.add('hidden');
-                document.getElementById('btn-reset-news-plan').classList.remove('hidden');
-                document.getElementById('news-setup-status').textContent = "УТВЕРЖДЕНО";
-                document.getElementById('news-setup-status').className = "text-[10px] text-fp-green border border-fp-green/30 bg-fp-green/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
-            } else {
-                isNewsPlanSet = false;
                 newsEvents = [];
                 document.getElementById('news-setup-form').classList.remove('hidden');
                 document.getElementById('btn-reset-news-plan').classList.add('hidden');
@@ -535,26 +535,31 @@
 
         const updateDashboard = () => {
             const now = new Date();
-            const dateStr = now.toDateString();
+            const todayStr = now.toDateString();
             
-            if (localStorage.getItem('fp_last_day') !== dateStr) {
-                localStorage.setItem('fp_last_day', dateStr);
-                appState.date = dateStr;
+            // Динамический сброс при наступлении 00:00, если приложение открыто
+            if (appState.date !== todayStr) {
+                appState.date = todayStr;
                 appState.dailyPnl = 0;
                 appState.streak = 0;
                 appState.tradesCount = 0;
+                localStorage.setItem('fp_master_state', JSON.stringify(appState));
+                
                 notifiedEvents.clear();
                 localStorage.removeItem('fp_news_plan');
                 isNewsPlanSet = false;
                 newsEvents = [];
                 tempNewsList = [];
+                
                 document.getElementById('news-setup-form').classList.remove('hidden');
                 document.getElementById('btn-reset-news-plan').classList.add('hidden');
                 document.getElementById('news-setup-status').textContent = "Не задано";
                 document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
-                localStorage.setItem('fp_master_state', JSON.stringify(appState));
+                
                 const checkInputs = document.querySelectorAll('.checklist-item');
                 checkInputs.forEach(c => c.checked = false);
+                
+                renderUI(); // Форсированное обновление экрана
             }
 
             const currentMins = now.getHours() * 60 + now.getMinutes();
