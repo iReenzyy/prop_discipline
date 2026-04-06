@@ -296,43 +296,84 @@
         let appState = { phase: 1, balance: STARTING_BALANCE, date: new Date().toDateString(), dailyPnl: 0, streak: 0, tradesCount: 0, status: "ACTIVE" };
 
         const loadState = () => {
-            const saved = JSON.parse(localStorage.getItem('fp_master_state'));
-            const dateStr = new Date().toDateString();
+            const savedState = JSON.parse(localStorage.getItem('fp_master_state'));
+            const todayStr = new Date().toDateString();
             const lastDay = localStorage.getItem('fp_last_day');
             
-            // Сначала вытягиваем все сохраненные данные (баланс, фазу и т.д.)
-            if (saved) {
-                appState = { ...appState, ...saved };
+            // Забираем долгосрочные данные (баланс, фаза)
+            if (savedState) {
+                appState = { ...appState, ...savedState };
             }
 
-            // Если наступили новые сутки
-            if (lastDay !== dateStr) {
-                localStorage.setItem('fp_last_day', dateStr);
-                appState.date = dateStr;
+            // ПРОВЕРКА НА НОВЫЙ ДЕНЬ
+            if (lastDay !== todayStr) {
+                // Обнуляем дневную статистику
+                appState.date = todayStr;
                 appState.dailyPnl = 0;
                 appState.streak = 0;
                 appState.tradesCount = 0;
                 
+                // Зачищаем локальное хранилище от вчерашних новостей и чек-листа
                 notifiedEvents.clear();
                 localStorage.removeItem('fp_news_plan');
-                isNewsPlanSet = false;
+                localStorage.removeItem('fp_checklist');
                 
-                // КРИТИЧЕСКИЙ ФИКС: Принудительно перезаписываем сейф обнуленными дневными данными
+                isNewsPlanSet = false;
+                newsEvents = [];
+                
+                // Моментально бетонируем обнуленное состояние в память
+                localStorage.setItem('fp_last_day', todayStr);
                 localStorage.setItem('fp_master_state', JSON.stringify(appState));
+            } else {
+                // ДЕНЬ ТОТ ЖЕ. Загружаем сохраненный на сегодня новостной план
+                const savedNews = JSON.parse(localStorage.getItem('fp_news_plan'));
+                if (savedNews && savedNews.date === todayStr) {
+                    newsEvents = savedNews.events;
+                    isNewsPlanSet = true;
+                } else {
+                    isNewsPlanSet = false;
+                }
+
+                // Загружаем сохраненный на сегодня чек-лист
+                const savedChecklist = JSON.parse(localStorage.getItem('fp_checklist'));
+                if (savedChecklist) {
+                    document.querySelectorAll('.checklist-item').forEach(cb => {
+                        if (savedChecklist[cb.id]) cb.checked = true;
+                    });
+                }
             }
 
-            const savedNews = JSON.parse(localStorage.getItem('fp_news_plan'));
-            if (savedNews && savedNews.date === dateStr) {
-                newsEvents = savedNews.events;
-                newsEvents = [];
+            // Отрисовываем статус новостной формы
+            if (isNewsPlanSet) {
+                document.getElementById('news-setup-form').classList.add('hidden');
+                document.getElementById('btn-reset-news-plan').classList.remove('hidden');
+                document.getElementById('news-setup-status').textContent = "УТВЕРЖДЕНО";
+                document.getElementById('news-setup-status').className = "text-[10px] text-fp-green border border-fp-green/30 bg-fp-green/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
+            } else {
                 document.getElementById('news-setup-form').classList.remove('hidden');
                 document.getElementById('btn-reset-news-plan').classList.add('hidden');
+                document.getElementById('news-setup-status').textContent = "Не задано";
+                document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
             }
 
             renderUI();
+            updateDashboard(); // Первый рендер дашборда
         };
 
-        const saveState = () => { localStorage.setItem('fp_master_state', JSON.stringify(appState)); renderUI(); updateDashboard(); };
+        const saveState = () => { 
+            localStorage.setItem('fp_master_state', JSON.stringify(appState)); 
+            renderUI(); 
+            updateDashboard(); 
+        };
+
+        const saveChecklistState = () => {
+            const state = {};
+            document.querySelectorAll('.checklist-item').forEach(cb => {
+                state[cb.id] = cb.checked;
+            });
+            localStorage.setItem('fp_checklist', JSON.stringify(state));
+            updateDashboard();
+        };
 
         let tempNewsList = [];
 
@@ -537,29 +578,10 @@
             const now = new Date();
             const todayStr = now.toDateString();
             
-            // Динамический сброс при наступлении 00:00, если приложение открыто
-            if (appState.date !== todayStr) {
-                appState.date = todayStr;
-                appState.dailyPnl = 0;
-                appState.streak = 0;
-                appState.tradesCount = 0;
-                localStorage.setItem('fp_master_state', JSON.stringify(appState));
-                
-                notifiedEvents.clear();
-                localStorage.removeItem('fp_news_plan');
-                isNewsPlanSet = false;
-                newsEvents = [];
-                tempNewsList = [];
-                
-                document.getElementById('news-setup-form').classList.remove('hidden');
-                document.getElementById('btn-reset-news-plan').classList.add('hidden');
-                document.getElementById('news-setup-status').textContent = "Не задано";
-                document.getElementById('news-setup-status').className = "text-[10px] text-fp-red border border-fp-red/30 bg-fp-red/10 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider";
-                
-                const checkInputs = document.querySelectorAll('.checklist-item');
-                checkInputs.forEach(c => c.checked = false);
-                
-                renderUI(); // Форсированное обновление экрана
+            // Если мы прямо сейчас в работающем приложении и наступила полночь:
+            if (localStorage.getItem('fp_last_day') !== todayStr) {
+                loadState(); // Перезапуск всей инициализации (полный сброс нового дня)
+                return; // Выходим из текущего тика, интерфейс отрисуется сам
             }
 
             const currentMins = now.getHours() * 60 + now.getMinutes();
@@ -657,12 +679,21 @@
             }
         };
 
+        // Запуск при загрузке документа
         document.addEventListener('DOMContentLoaded', () => { 
             loadState(); 
             setInterval(updateDashboard, 1000); 
-            document.querySelectorAll('.checklist-item').forEach(cb => cb.addEventListener('change', updateDashboard));
+            // Слушатели для сохранения чек-листа при каждом клике
+            document.querySelectorAll('.checklist-item').forEach(cb => {
+                cb.addEventListener('change', saveChecklistState);
+            });
         });
-        document.getElementById('btn-reset').addEventListener('click', () => { const cb = document.querySelectorAll('.checklist-item'); cb.forEach(c => c.checked = false); updateDashboard(); });
+
+        // Кнопка сброса чек-листа
+        document.getElementById('btn-reset').addEventListener('click', () => { 
+            document.querySelectorAll('.checklist-item').forEach(c => c.checked = false); 
+            saveChecklistState(); 
+        });
     </script>
 </body>
 </html>
